@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Osciloscopio Arcade · Medidas Electrónicas I</title>
+<style>
+:root{
+  --bg:#0b1210; --panel:#131d1a; --panel2:#1a2723; --line:#2a3d37;
+  --ink:#e6f2ec; --dim:#8fa69c; --trace:#4dff9a; --amber:#ffb84d; --red:#ff6b6b; --blue:#6bc5ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center}
+main{width:100%;max-width:640px;padding:16px 14px 40px}
+header{width:100%;max-width:640px;padding:18px 14px 4px;display:flex;align-items:center;gap:12px}
+header h1{font-size:19px;margin:0;letter-spacing:.5px;color:var(--trace);text-shadow:0 0 12px rgba(77,255,154,.45)}
+header p{margin:2px 0 0;font-size:12px;color:var(--dim)}
+.logo{width:44px;height:44px;border:2px solid var(--line);border-radius:10px;background:#07100d;flex:none}
+h2{font-size:17px;margin:4px 0 6px;color:var(--amber)}
+p{line-height:1.5;font-size:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media(max-width:420px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:left;color:var(--ink);font:inherit;cursor:pointer;transition:transform .08s,border-color .15s}
+.card:hover,.card:focus-visible{border-color:var(--trace);outline:none}
+.card:active{transform:scale(.98)}
+.card .t{font-size:15px;font-weight:700;color:var(--trace)}
+.card .d{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.45}
+.card .b{font-size:12px;color:var(--amber);margin-top:8px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:var(--dim)}
+.bar b{color:var(--ink)}
+button.btn{font:inherit;font-size:14px;font-weight:700;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;min-height:46px}
+button.btn:hover,button.btn:focus-visible{border-color:var(--trace);outline:none}
+button.btn.pri{background:var(--trace);color:#06140d;border-color:var(--trace)}
+button.btn.ok{border-color:var(--trace);color:var(--trace)}
+button.btn.bad{border-color:var(--red);color:var(--red)}
+button.btn:disabled{opacity:.55;cursor:default}
+button.link{background:none;border:none;color:var(--blue);font:inherit;font-size:13px;cursor:pointer;padding:6px 0}
+.opts{display:grid;gap:8px;margin-top:12px}
+.opts.two{grid-template-columns:1fr 1fr}
+.q{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:15px;line-height:1.5;min-height:84px}
+.fb{margin-top:10px;font-size:13.5px;line-height:1.5;min-height:42px}
+.fb.ok{color:var(--trace)} .fb.bad{color:var(--red)}
+canvas{width:100%;display:block;background:#04100b;border:2px solid var(--line);border-radius:10px;touch-action:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.row label{font-size:13px;color:var(--dim)}
+input[type=number]{font:inherit;font-size:16px;width:110px;background:#07100d;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+input[type=range]{width:100%;accent-color:var(--trace);height:34px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font:inherit;font-size:13px;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:10px 13px;cursor:pointer}
+.chip.used{opacity:.25;pointer-events:none}
+.chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:44px;margin-top:10px;font-size:13px}
+.chain span{background:#0d2a1c;border:1px solid var(--trace);color:var(--trace);border-radius:8px;padding:7px 9px}
+.chain i{color:var(--dim);font-style:normal}
+.info{background:var(--panel);border-left:3px solid var(--amber);padding:10px 12px;border-radius:6px;font-size:13px;line-height:1.5;margin-top:10px;color:var(--ink)}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;font:inherit;font-size:13px;font-weight:700;background:var(--panel2);color:var(--dim);border:none;padding:11px 8px;cursor:pointer}
+.seg button.on{background:var(--trace);color:#06140d}
+.big{font-size:40px;color:var(--trace);text-align:center;margin:18px 0 4px;text-shadow:0 0 14px rgba(77,255,154,.4)}
+.center{text-align:center}
+footer{font-size:11px;color:var(--dim);padding:0 14px 24px;text-align:center;max-width:640px}
+</style>
+</head>
+<body>
+<header>
+  <canvas class="logo" id="logo" width="88" height="88" aria-hidden="true"></canvas>
+  <div><h1>OSCILOSCOPIO ARCADE</h1><p>Medidas Electrónicas I · 2º parcial · minijuegos de repaso</p></div>
+</header>
+<main id="app"></main>
+<footer>Hecho para estudiar osciloscopio analógico y digital, sondas y mediciones. Los puntajes se guardan solo en este dispositivo.</footer>
+
+<script>
+"use strict";
+/* ---------- utilidades ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const app = $("#app");
+const rnd = (a, b) => a + Math.random() * (b - a);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let scores = {};
+try { scores = JSON.parse(localStorage.getItem("osc-arcade") || "{}") || {}; } catch (e) { scores = {}; }
+function saveBest(id, v) {
+  if (!(id in scores) || v > scores[id]) { scores[id] = v; try { localStorage.setItem("osc-arcade", JSON.stringify(scores)); } catch (e) {} return true; }
+  return false;
+}
+let timers = [], outs = [];
+let raf = 0;
+function clearAll() { timers.forEach(clearInterval); timers = []; outs.forEach(clearTimeout); outs = []; cancelAnimationFrame(raf); raf = 0; }
+function later(fn, ms) { outs.push(setTimeout(fn, ms)); }
+function fmt(v) { return (Math.round(v * 100) / 100).toString().replace(".", ","); }
+
+/* ---------- pantalla de osciloscopio ---------- */
+function setupCanvas(cv, ratio = 0.8) {
+  const w = cv.clientWidth || 600, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(w * ratio * dpr);
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h: w * ratio };
+}
+function drawGrid(ctx, w, h, cols = 10, rows = 8) {
+  ctx.clearRect(0, 0, w, h); ctx.fillStyle = "#04100b"; ctx.fillRect(0, 0, w, h);
+  ctx.strokeStyle = "rgba(120,170,150,.28)"; ctx.lineWidth = 1;
+  for (let i = 0; i <= cols; i++) { const x = i * w / cols; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let j = 0; j <= rows; j++) { const y = j * h / rows; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  ctx.strokeStyle = "rgba(160,210,190,.6)";
+  ctx.beginPath(); ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+  for (let i = 0; i <= cols * 5; i++) { const x = i * w / (cols * 5); ctx.beginPath(); ctx.moveTo(x, h / 2 - 3); ctx.lineTo(x, h / 2 + 3); ctx.stroke(); }
+  for (let j = 0; j <= rows * 5; j++) { const y = j * h / (rows * 5); ctx.beginPath(); ctx.moveTo(w / 2 - 3, y); ctx.lineTo(w / 2 + 3, y); ctx.stroke(); }
+}
+function trace(ctx, pts, color = "#4dff9a") {
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.shadowColor = color; ctx.shadowBlur = 8; ctx.lineJoin = "round";
+  ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.restore();
+}
+
+/* ---------- menú ---------- */
+const GAMES = [
+  { id: "vf", t: "Verdadero o Falso relámpago", d: "60 segundos. Afirmaciones de todo el temario, como las que caen en el parcial.", unit: "aciertos" },
+  { id: "panel", t: "¿Qué perilla es?", d: "Te doy la función, elegí el control del panel frontal.", unit: "/10" },
+  { id: "medir", t: "Medí la señal", d: "Leé la retícula: calculá Vpp y frecuencia con las escalas y la sonda.", unit: "/10" },
+  { id: "sonda", t: "Compensá la sonda", d: "Girá Cp hasta que la cuadrada del borne CAL quede perfecta.", unit: "pts" },
+  { id: "trigger", t: "Cazá el disparo", d: "LEVEL, SLOPE y MODE: cumplí cada misión de disparo.", unit: "/6" },
+  { id: "liss", t: "Lissajous", d: "Modo XY: adiviná el desfasaje o la relación de frecuencias.", unit: "/8" },
+  { id: "bloques", t: "Armá el osciloscopio", d: "Ordená los bloques de cada cadena de señal.", unit: "pts" },
+  { id: "alias", t: "Cazador de aliasing", d: "Osciloscopio digital: ¿se cumple Nyquist? ¿Qué frecuencia falsa aparece?", unit: "/8" }
+];
+function home() {
+  clearAll();
+  app.innerHTML = `<p>Elegí un minijuego. Cada uno repasa una parte del temario del Ing. Teruel: osciloscopio analógico, disparo, sonda, mediciones y osciloscopio digital.</p>
+  <div class="grid">${GAMES.map(g => `<button class="card" data-g="${g.id}"><div class="t">${g.t}</div><div class="d">${g.d}</div><div class="b">${g.id in scores ? "Récord: " + scores[g.id] + " " + g.unit : "Sin jugar"}</div></button>`).join("")}</div>`;
+  app.querySelectorAll(".card").forEach(b => b.onclick = () => START[b.dataset.g]());
+  window.scrollTo(0, 0);
+}
+function shell(title, inner) {
+  clearAll();
+  app.innerHTML = `<button class="link" id="back">← Volver al menú</button><h2>${title}</h2>${inner}`;
+  $("#back").onclick = home; window.scrollTo(0, 0);
+}
+function finish(id, score, unit, msg) {
+  clearAll();
+  const best = saveBest(id, score);
+  app.innerHTML = `<button class="link" id="back">← Volver al menú</button><div class="big">${score} ${unit}</div>
+  <p class="center">${best ? "¡Nuevo récord!" : "Récord: " + scores[id] + " " + unit}</p><p class="center">${msg || ""}</p>
+  <div class="row" style="justify-content:center"><button class="btn pri" id="again">Jugar de nuevo</button><button class="btn" id="menu">Menú</button></div>`;
+  $("#back").onclick = home; $("#menu").onclick = home; $("#again").onclick = () => START[id]();
+}
+const START = {};
+
+/* ---------- 1. Verdadero o falso ---------- */
+const VF = [
+  ["La base de tiempo del osciloscopio analógico es una señal diente de sierra.", true, "La rampa lineal mueve el haz a velocidad constante."],
+  ["Durante el retrazo el haz permanece encendido.", false, "El eje Z lo apaga para que no se vea la vuelta."],
+  ["La rejilla de control del TRC regula el brillo (INTENSITY).", true, "Controla cuántos electrones pasan."],
+  ["El cátodo emite electrones por efecto termoiónico.", true, "Un filamento lo calienta."],
+  ["La línea de retardo está en el canal horizontal.", false, "Está en el canal vertical: atrasa la señal para ver el flanco de disparo."],
+  ["Sin línea de retardo no se vería el flanco que disparó el barrido.", true, "El disparo tarda en arrancar la rampa."],
+  ["En acoplamiento AC se bloquea la componente continua.", true, "Un capacitor en serie la elimina."],
+  ["El acoplamiento AC se comporta como un filtro pasa bajos.", false, "Es un pasa altos: atenúa las bajas frecuencias."],
+  ["En GND se ve la referencia de 0 V.", true, "La entrada del amplificador se pone a masa."],
+  ["El modo CHOP conviene para señales de baja frecuencia.", true, "Con ALT la imagen parpadearía."],
+  ["En modo ALT se conmuta entre canales muchas veces dentro de un mismo barrido.", false, "Eso es CHOP. ALT usa un barrido completo por canal."],
+  ["El ancho de banda lo define principalmente el amplificador vertical.", true, "Es la frecuencia donde la respuesta cae 3 dB."],
+  ["En el límite del ancho de banda el error de amplitud es de alrededor del 30 %.", true, "−3 dB equivale a 70,7 % de la amplitud."],
+  ["Para medir con la retícula el control VAR debe estar en CAL.", true, "Si no, la escala está descalibrada."],
+  ["La rampa se obtiene cargando un capacitor con corriente constante.", true, "V = I·t / C."],
+  ["En modo NORMAL, si no hay disparo, igual se ve una traza.", false, "En NORMAL sin disparo no hay barrido. Eso lo hace AUTO."],
+  ["En modo AUTO, sin disparo, el barrido corre libre.", true, "Un temporizador interno lo lanza."],
+  ["El hold-off sirve para estabilizar trenes de pulsos.", true, "Ignora disparos durante un tiempo tras cada barrido."],
+  ["La fuente LINE dispara con la tensión de red.", true, "50 Hz."],
+  ["El disparo fija el nivel y la pendiente donde arranca cada barrido.", true, "Por eso la imagen queda quieta."],
+  ["El Schmitt trigger convierte la señal de disparo en una cuadrada.", true, "Luego se deriva para obtener los pulsos."],
+  ["La entrada típica del osciloscopio es 1 MΩ en paralelo con unos 20 pF.", true, "Es lo que fija el atenuador."],
+  ["La sonda 1X atenúa la señal 10 veces.", false, "La 1X no atenúa. La 10X sí."],
+  ["La sonda 10X presenta 10 MΩ al circuito.", true, "9 MΩ de la sonda + 1 MΩ del osciloscopio."],
+  ["La condición de compensación es Rp·Cp = Ro·(Co + Cc).", true, "Iguales constantes de tiempo."],
+  ["Una sonda subcompensada muestra picos en los flancos.", false, "Muestra flancos redondeados. Los picos son de la sobrecompensada."],
+  ["Una sonda sobrecompensada amplifica las altas frecuencias.", true, "Por eso aparecen sobreimpulsos."],
+  ["La impedancia de entrada del osciloscopio sube con la frecuencia.", false, "Baja, porque Xc = 1/ωC disminuye."],
+  ["Un osciloscopio de 100 MHz tiene un tiempo de subida de 3,5 ns.", true, "Tr = 0,35 / BW."],
+  ["Un cable de masa largo en la sonda puede producir ringing.", true, "Agrega inductancia que resuena."],
+  ["La sonda activa tiene un FET en la punta y muy baja capacidad.", true, "1 a 3 pF."],
+  ["El método XY indica cuál de las dos señales adelanta.", false, "Da el módulo del desfasaje, no el signo."],
+  ["Una recta a 45° en modo XY indica desfasaje de 0°.", true, "Ambas señales en fase."],
+  ["Un círculo en XY (escalas iguales) indica 90°.", true, "Señales en cuadratura."],
+  ["El osciloscopio mide corriente directamente.", false, "Solo mide tensión: se usa shunt o sonda de corriente."],
+  ["La sonda de corriente de AC funciona como un transformador.", true, "El conductor es el primario."],
+  ["Para medir corriente continua con sonda se usa efecto Hall.", true, "La de transformador no mide DC."],
+  ["La pinza de masa de la sonda está unida a la tierra de la red.", true, "Por eso hay que cuidar dónde se conecta."],
+  ["El osciloscopio digital muestrea la señal con un conversor A/D.", true, "Luego la guarda en memoria."],
+  ["Con fs < 2f aparece aliasing.", true, "Se ve una señal falsa de frecuencia fs − f."],
+  ["Un A/D de 8 bits tiene 256 niveles.", true, "2⁸ = 256."],
+  ["El muestreo en tiempo equivalente sirve para transitorios únicos.", false, "Solo para señales repetitivas. Los transitorios requieren tiempo real."],
+  ["El modo detección de picos capta glitches angostos.", true, "Guarda el máximo y el mínimo de cada intervalo."],
+  ["El modo promedio reduce el ruido aleatorio.", true, "Solo sirve con señales repetitivas."],
+  ["El predisparo existe en el osciloscopio analógico.", false, "Solo en el digital, por la memoria circular."],
+  ["En el digital, cambiar SEC/DIV cambia la frecuencia de muestreo.", true, "Con escalas lentas puede aparecer aliasing."],
+  ["El digital necesita ALT o CHOP para ver dos canales.", false, "Adquiere los canales en simultáneo."],
+  ["El conversor flash es el más rápido.", true, "Es de tipo paralelo."],
+  ["La interpolación senoidal (sin x / x) conviene para pulsos rectangulares.", false, "Para pulsos conviene la lineal."],
+  ["Las mediciones automáticas del digital son más precisas que contar divisiones.", true, "Usan los puntos almacenados."],
+  ["La base de tiempo demorada permite ampliar una parte de la señal.", true, "Una segunda rampa más rápida arranca tras un retardo."],
+  ["MAG ×10 mejora la exactitud de la base de tiempo.", false, "Amplía, pero con menor exactitud."],
+  ["ADD con INV en un canal da la diferencia CH1 − CH2.", true, "Sirve para medir en forma diferencial."],
+  ["La retícula típica tiene 8 divisiones verticales y 10 horizontales.", true, "Con 5 subdivisiones por división."]
+];
+START.vf = function () {
+  let list = shuffle(VF), i = 0, score = 0, left = 60, lock = false;
+  shell("Verdadero o Falso relámpago", `<div class="bar"><span>Tiempo: <b id="tm">60</b> s</span><span>Aciertos: <b id="sc">0</b></span></div>
+    <div class="q" id="q"></div><div class="opts two"><button class="btn" id="bv">VERDADERO</button><button class="btn" id="bf">FALSO</button></div><div class="fb" id="fb"></div>`);
+  const show = () => { if (i >= list.length) { list = shuffle(VF); i = 0; } $("#q").textContent = list[i][0]; };
+  const ans = v => {
+    if (lock) return; const it = list[i], ok = v === it[1];
+    if (ok) { score++; $("#sc").textContent = score; $("#fb").className = "fb ok"; $("#fb").textContent = "✔ Bien la anterior: " + it[2]; i++; show(); }
+    else { lock = true; $("#fb").className = "fb bad"; $("#fb").textContent = "✘ " + (it[1] ? "Era verdadero. " : "Era falso. ") + it[2]; later(() => { lock = false; i++; if (left > 0) show(); }, 1700); }
+  };
+  $("#bv").onclick = () => ans(true); $("#bf").onclick = () => ans(false); show();
+  timers.push(setInterval(() => { left--; const t = $("#tm"); if (t) t.textContent = left; if (left <= 0) finish("vf", score, "aciertos", score >= 20 ? "Excelente ritmo." : "Repasá las que fallaste y volvé a intentar."); }, 1000));
+};
+
+/* ---------- 2. Panel frontal ---------- */
+const PANEL = [
+  ["INTENSITY", "Regula el brillo del haz actuando sobre la rejilla de control."],
+  ["FOCUS", "Ajusta el enfoque del punto luminoso."],
+  ["TRACE ROTATION", "Alinea la traza con las líneas horizontales de la retícula."],
+  ["BEAM FIND", "Trae el haz a la pantalla cuando se perdió fuera de ella."],
+  ["VOLTS/DIV", "Fija la sensibilidad vertical: cuántos volts vale cada división."],
+  ["VAR (vertical)", "Ajuste continuo de la sensibilidad; descalibra la escala si no está en CAL."],
+  ["AC / DC / GND", "Selecciona el modo de acoplamiento de la entrada."],
+  ["INV", "Invierte la señal de un canal; con ADD permite obtener la resta."],
+  ["ALT / CHOP", "Elige cómo se presentan dos canales con un solo haz."],
+  ["TIME/DIV", "Fija la velocidad de barrido: cuánto tiempo vale cada división."],
+  ["MAG ×10", "Magnifica la base de tiempo, con menor exactitud."],
+  ["DLY TIME POS", "Ajusta el retardo con el que arranca la base de tiempo demorada."],
+  ["TRIG LEVEL", "Fija la tensión de la señal a la que se inicia el barrido."],
+  ["SLOPE", "Elige si se dispara en flanco ascendente o descendente."],
+  ["HOLD OFF", "Tiempo tras cada barrido durante el cual se ignoran los disparos."],
+  ["SOURCE", "Elige de dónde sale la señal de disparo: CH1, CH2, LINE o EXT."],
+  ["MODE (AUTO / NORMAL)", "Define si hay barrido cuando no existe señal de disparo."],
+  ["EXT TRIG", "Borne de entrada para una señal de disparo externa."],
+  ["CAL", "Borne con una onda cuadrada de 1 kHz para compensar la sonda."],
+  ["COMP TEST", "Probador de componentes: muestra la curva V-I."],
+  ["AUTOCONFIGURAR (digital)", "Ajusta solo las escalas y el disparo para mostrar la señal."],
+  ["RUN/STOP (digital)", "Inicia o detiene la adquisición continua."],
+  ["SEC ÚNICA (digital)", "Hace una sola adquisición; ideal para transitorios."],
+  ["CURSORES (digital)", "Líneas móviles para medir ΔV y Δt sobre la forma de onda."],
+  ["SET TO 50 % (digital)", "Lleva el nivel de disparo a la mitad de la señal."]
+];
+START.panel = function () {
+  const list = shuffle(PANEL).slice(0, 10); let i = 0, score = 0;
+  shell("¿Qué perilla es?", `<div class="bar"><span>Pregunta <b id="n">1</b>/10</span><span>Aciertos: <b id="sc">0</b></span></div><div class="q" id="q"></div><div class="opts" id="o"></div><div class="fb" id="fb"></div>`);
+  const show = () => {
+    const it = list[i]; $("#n").textContent = i + 1; $("#q").textContent = it[1]; $("#fb").textContent = "";
+    const others = shuffle(PANEL.filter(p => p[0] !== it[0])).slice(0, 3).map(p => p[0]);
+    $("#o").innerHTML = shuffle([it[0], ...others]).map(o => `<button class="btn" data-o="${esc(o)}">${esc(o)}</button>`).join("");
+    $("#o").querySelectorAll("button").forEach(b => b.onclick = () => {
+      $("#o").querySelectorAll("button").forEach(x => { x.disabled = true; if (x.dataset.o === it[0]) x.classList.add("ok"); });
+      if (b.dataset.o === it[0]) { score++; $("#sc").textContent = score; } else b.classList.add("bad");
+      later(() => { i++; i < 10 ? show() : finish("panel", score, "/10", score >= 8 ? "Conocés el panel de memoria." : "Mirá la tabla del panel frontal en la guía."); }, 1100);
+    });
+  };
+  show();
+};
+
+/* ---------- 3. Medí la señal ---------- */
+START.medir = function () {
+  let round = 0, score = 0, cur = null;
+  shell("Medí la señal", `<div class="bar"><span>Señal <b id="n">1</b>/5</span><span>Puntos: <b id="sc">0</b>/10</span></div><canvas id="cv"></canvas>
+    <div class="info" id="set"></div>
+    <div class="row"><label for="vpp">Vpp real [V]</label><input type="number" id="vpp" step="any" inputmode="decimal"></div>
+    <div class="row"><label for="fr">Frecuencia [Hz]</label><input type="number" id="fr" step="any" inputmode="decimal"></div>
+    <div class="row"><button class="btn pri" id="go">Comprobar</button></div><div class="fb" id="fb"></div>`);
+  const cv = $("#cv");
+  const tdivs = [[0.1e-3, "0,1 ms"], [0.2e-3, "0,2 ms"], [0.5e-3, "0,5 ms"], [1e-3, "1 ms"], [2e-3, "2 ms"], [5e-3, "5 ms"]];
+  const next = () => {
+    const vd = pick([0.1, 0.2, 0.5, 1, 2, 5]), td = pick(tdivs), probe = pick([1, 1, 10]);
+    const ppDiv = pick([2, 2.4, 3, 3.6, 4, 4.4, 5, 5.6, 6]), perDiv = pick([2, 2.5, 3, 4, 5]);
+    cur = { vpp: ppDiv * vd * probe, f: 1 / (perDiv * td[0]), ppDiv, perDiv, vd, td, probe };
+    $("#n").textContent = round + 1; $("#vpp").value = ""; $("#fr").value = ""; $("#fb").textContent = ""; $("#go").textContent = "Comprobar"; $("#go").onclick = check;
+    $("#set").innerHTML = `VOLTS/DIV: <b>${fmt(vd)} V</b> · TIME/DIV: <b>${td[1]}</b> · Sonda: <b>${probe}X</b> (el osciloscopio no la detecta) · VAR en CAL`;
+    const { ctx, w, h } = setupCanvas(cv); drawGrid(ctx, w, h);
+    const pts = []; const ph = rnd(0, 6.28);
+    for (let x = 0; x <= w; x += 2) pts.push([x, h / 2 - (ppDiv / 2) * (h / 8) * Math.sin(2 * Math.PI * (x / (w / 10)) / perDiv + ph)]);
+    trace(ctx, pts);
+  };
+  const check = () => {
+    const v = parseFloat($("#vpp").value), f = parseFloat($("#fr").value);
+    const okV = Math.abs(v - cur.vpp) / cur.vpp < 0.07, okF = Math.abs(f - cur.f) / cur.f < 0.07;
+    score += (okV ? 1 : 0) + (okF ? 1 : 0); $("#sc").textContent = score;
+    $("#fb").className = "fb " + (okV && okF ? "ok" : "bad");
+    $("#fb").innerHTML = `${okV ? "✔" : "✘"} Vpp = ${fmt(cur.ppDiv)} div × ${fmt(cur.vd)} V/div × ${cur.probe} = <b>${fmt(cur.vpp)} V</b><br>${okF ? "✔" : "✘"} T = ${fmt(cur.perDiv)} div × ${cur.td[1]}/div → f = <b>${fmt(cur.f)} Hz</b>`;
+    round++; $("#go").textContent = round < 5 ? "Siguiente señal" : "Ver resultado";
+    $("#go").onclick = () => round < 5 ? next() : finish("medir", score, "/10", "Recordá: divisiones × escala × factor de sonda.");
+  };
+  next();
+};
+
+/* ---------- 4. Compensá la sonda ---------- */
+START.sonda = function () {
+  let round = 0, total = 0, cur = null, done = false;
+  shell("Compensá la sonda", `<div class="bar"><span>Sonda <b id="n">1</b>/3</span><span>Puntos: <b id="sc">0</b></span></div><canvas id="cv"></canvas>
+    <div class="info" id="set"></div>
+    <div class="row"><label for="cp">Trimmer Cp: <b id="cpv"></b> pF</label></div><input type="range" id="cp" min="2" max="30" step="0.1">
+    <div class="row"><button class="btn pri" id="go">Listo, está compensada</button></div><div class="fb" id="fb"></div>`);
+  const cv = $("#cv"), sl = $("#cp");
+  const draw = () => {
+    const { ctx, w, h } = setupCanvas(cv, 0.55); drawGrid(ctx, w, h, 10, 6);
+    const cp = parseFloat(sl.value), ct = cur.co + cur.cc, a = (cp / (cp + ct)) / 0.1;
+    const half = w / 4, amp = h * 0.17, tau = half * 0.16, pts = [];
+    for (let x = 0; x <= w; x += 1) { const k = Math.floor(x / half), t = x - k * half, hi = k % 2 === 0; const lvl = 1 + (a - 1) * Math.exp(-t / tau); const y = hi ? lvl : -lvl; pts.push([x, h / 2 - amp * y]); }
+    trace(ctx, pts); $("#cpv").textContent = fmt(cp);
+  };
+  const next = () => {
+    done = false; cur = { co: pick([15, 20, 25, 30]), cc: pick([60, 70, 80, 100, 110]) };
+    const ideal = (cur.co + cur.cc) / 9; let start; do { start = rnd(3, 29); } while (Math.abs(start - ideal) < 3);
+    sl.value = start.toFixed(1); sl.disabled = false; $("#n").textContent = round + 1; $("#fb").textContent = "";
+    $("#set").innerHTML = `Sonda 10X en el borne CAL (1 kHz). Rp = 9 MΩ, Ro = 1 MΩ, <b>Co = ${cur.co} pF</b>, <b>Cc = ${cur.cc} pF</b>. Podés hacerlo a ojo o calcular Cp.`;
+    $("#go").textContent = "Listo, está compensada"; $("#go").onclick = check; draw();
+  };
+  const check = () => {
+    if (done) return; done = true; sl.disabled = true;
+    const ideal = (cur.co + cur.cc) / 9, cp = parseFloat(sl.value), err = Math.abs(cp - ideal) / ideal;
+    const pts = err < 0.03 ? 100 : err < 0.08 ? 70 : err < 0.15 ? 40 : 0; total += pts; $("#sc").textContent = total;
+    const st = err < 0.03 ? "compensada" : cp < ideal ? "subcompensada (flancos redondeados: faltan altas frecuencias)" : "sobrecompensada (picos: sobran altas frecuencias)";
+    $("#fb").className = "fb " + (pts >= 70 ? "ok" : "bad");
+    $("#fb").innerHTML = `Quedó <b>${st}</b>. Cp ideal = (Co + Cc) / 9 = ${fmt(ideal)} pF, porque Rp·Cp = Ro·(Co + Cc). +${pts} puntos.`;
+    round++; $("#go").textContent = round < 3 ? "Siguiente sonda" : "Ver resultado";
+    $("#go").onclick = () => round < 3 ? next() : finish("sonda", total, "pts", "Sub: redondeada. Sobre: picos. Perfecta: cuadrada.");
+  };
+  sl.oninput = draw; next();
+};
+
+/* ---------- 5. Cazá el disparo ---------- */
+START.trigger = function () {
+  const A = 3; // amplitud en divisiones (pico)
+  const MIS = [
+    ["Dejá la imagen quieta, con el barrido arrancando en un flanco ascendente.", s => s.inside && s.slope > 0, "Con el nivel dentro de la señal y SLOPE +, cada barrido empieza en el mismo punto."],
+    ["Ahora que el barrido arranque en un flanco descendente.", s => s.inside && s.slope < 0, "SLOPE − dispara cuando la señal cruza el nivel bajando."],
+    ["Hacé que la pantalla quede en negro (sin traza).", s => !s.inside && s.mode === "N", "NORMAL con el nivel fuera de la señal: no hay disparo, no hay barrido."],
+    ["Lográ un barrido libre: que la señal se vea corriendo, sin sincronizar.", s => !s.inside && s.mode === "A", "AUTO sin disparo: un temporizador lanza barridos que arrancan en cualquier punto."],
+    ["Que el barrido arranque cerca del pico positivo, subiendo (nivel entre +2,4 y +3 div).", s => s.inside && s.slope > 0 && s.level >= 2.4, "El LEVEL elige la tensión del punto de arranque."],
+    ["Que arranque cerca del pico negativo, bajando (nivel entre −3 y −2,4 div), en modo NORMAL.", s => s.inside && s.slope < 0 && s.level <= -2.4 && s.mode === "N", "Nivel, pendiente y modo actúan juntos."]
+  ];
+  let m = 0, score = 0, st = { level: 4, slope: 1, mode: "A" }, phase = 0;
+  shell("Cazá el disparo", `<div class="bar"><span>Misión <b id="n">1</b>/${MIS.length}</span><span>Logradas: <b id="sc">0</b></span></div><div class="q" id="q"></div><div style="height:10px"></div><canvas id="cv"></canvas>
+    <div class="row"><label for="lv">TRIG LEVEL: <b id="lvv"></b> div</label></div><input type="range" id="lv" min="-4" max="4" step="0.1" value="4">
+    <div class="row" style="gap:10px"><div class="seg" style="flex:1"><button id="sp">SLOPE +</button><button id="sm">SLOPE −</button></div><div class="seg" style="flex:1"><button id="ma">AUTO</button><button id="mn">NORMAL</button></div></div>
+    <div class="row"><button class="btn pri" id="go">Comprobar</button></div><div class="fb" id="fb"></div>`);
+  const cv = $("#cv"); let dims = setupCanvas(cv, 0.8);
+  const sync = () => { $("#sp").className = st.slope > 0 ? "on" : ""; $("#sm").className = st.slope < 0 ? "on" : ""; $("#ma").className = st.mode === "A" ? "on" : ""; $("#mn").className = st.mode === "N" ? "on" : ""; $("#lvv").textContent = (st.level > 0 ? "+" : "") + fmt(st.level); st.inside = Math.abs(st.level) <= A; };
+  $("#lv").oninput = e => { st.level = parseFloat(e.target.value); sync(); };
+  $("#sp").onclick = () => { st.slope = 1; sync(); }; $("#sm").onclick = () => { st.slope = -1; sync(); };
+  $("#ma").onclick = () => { st.mode = "A"; sync(); }; $("#mn").onclick = () => { st.mode = "N"; sync(); };
+  const frame = () => {
+    const { ctx, w, h } = dims; drawGrid(ctx, w, h); const dv = h / 8, per = w / 3.2;
+    const yl = h / 2 - st.level * dv; ctx.save(); ctx.strokeStyle = "#ffb84d"; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(0, yl); ctx.lineTo(w, yl); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = "#ffb84d"; ctx.font = "11px monospace"; ctx.fillText("LEVEL", 6, Math.max(12, Math.min(h - 4, yl - 4)));
+    let ph0 = null;
+    if (st.inside) { const a = Math.asin(st.level / A); ph0 = st.slope > 0 ? a : Math.PI - a; }
+    else if (st.mode === "A") { phase += 0.21; ph0 = phase; }
+    if (ph0 !== null) { const pts = []; for (let x = 0; x <= w; x += 2) pts.push([x, h / 2 - A * dv * Math.sin(2 * Math.PI * x / per + ph0)]); trace(ctx, pts); }
+    else { ctx.fillStyle = "rgba(143,166,156,.7)"; ctx.font = "13px monospace"; ctx.textAlign = "center"; ctx.fillText("sin disparo · sin barrido", w / 2, h / 2 - 10); ctx.textAlign = "left"; }
+    raf = requestAnimationFrame(frame);
+  };
+  const show = () => { $("#n").textContent = m + 1; $("#q").textContent = MIS[m][0]; $("#fb").textContent = ""; $("#go").textContent = "Comprobar"; $("#go").onclick = check; };
+  const check = () => {
+    const ok = MIS[m][1](st); if (ok) { score++; $("#sc").textContent = score; }
+    $("#fb").className = "fb " + (ok ? "ok" : "bad"); $("#fb").textContent = (ok ? "✔ Misión cumplida. " : "✘ No era eso. ") + MIS[m][2];
+    m++; $("#go").textContent = m < MIS.length ? "Siguiente misión" : "Ver resultado";
+    $("#go").onclick = () => m < MIS.length ? show() : finish("trigger", score, "/" + MIS.length, "NORMAL sin disparo: negro. AUTO sin disparo: barrido libre.");
+  };
+  sync(); show(); frame();
+};
+
+/* ---------- 6. Lissajous ---------- */
+START.liss = function () {
+  let round = 0, score = 0;
+  shell("Lissajous", `<div class="bar"><span>Figura <b id="n">1</b>/8</span><span>Aciertos: <b id="sc">0</b></span></div><canvas id="cv"></canvas><div class="q" id="q" style="min-height:0;margin-top:10px"></div><div class="opts two" id="o"></div><div class="fb" id="fb"></div>`);
+  const cv = $("#cv");
+  const next = () => {
+    $("#n").textContent = round + 1; $("#fb").textContent = "";
+    const isPhase = round % 2 === 0; let fx = 1, fy = 1, ph = 0, ans, opts, why;
+    if (isPhase) { const p = pick([0, 30, 45, 90, 135, 150, 180]); ph = p * Math.PI / 180; ans = p + "°"; opts = shuffle(["0°", "30°", "45°", "90°", "135°", "150°", "180°"].filter(o => o !== ans)).slice(0, 3).concat(ans);
+      why = p === 0 ? "Recta a 45°: en fase." : p === 180 ? "Recta inclinada al otro lado: 180°." : p === 90 ? "Círculo: 90°." : (p < 90 ? "Eje mayor en 1.º y 3.º cuadrante: φ = arcsen(B/A)." : "Eje mayor en 2.º y 4.º cuadrante: φ = 180° − arcsen(B/A).");
+      $("#q").textContent = "Dos senoidales de igual frecuencia y amplitud en modo XY. ¿Cuál es el desfasaje?"; }
+    else { const r = pick([[1, 2], [2, 1], [1, 3], [3, 1], [2, 3], [3, 2]]); fx = r[0]; fy = r[1]; ph = Math.PI / 2; ans = `fy/fx = ${fy}:${fx}`;
+      opts = shuffle([[1, 2], [2, 1], [1, 3], [3, 1], [2, 3], [3, 2]].map(x => `fy/fx = ${x[1]}:${x[0]}`).filter(o => o !== ans)).slice(0, 3).concat(ans);
+      why = `Tangencias con una recta horizontal: ${fy}. Con una vertical: ${fx}. fy/fx = tangencias horizontales / verticales.`;
+      $("#q").textContent = "CH1 en X y CH2 en Y. ¿Cuál es la relación de frecuencias?"; }
+    const { ctx, w, h } = setupCanvas(cv, 0.8); drawGrid(ctx, w, h);
+    const R = h * 0.36, pts = []; for (let t = 0; t <= 2 * Math.PI + 0.01; t += 0.01) pts.push([w / 2 + R * Math.sin(fx * t), h / 2 - R * Math.sin(fy * t + ph)]);
+    trace(ctx, pts);
+    $("#o").innerHTML = shuffle(opts).map(o => `<button class="btn" data-o="${o}">${o}</button>`).join("");
+    $("#o").querySelectorAll("button").forEach(b => b.onclick = () => {
+      $("#o").querySelectorAll("button").forEach(x => { x.disabled = true; if (x.dataset.o === ans) x.classList.add("ok"); });
+      const ok = b.dataset.o === ans; if (ok) { score++; $("#sc").textContent = score; } else b.classList.add("bad");
+      $("#fb").className = "fb " + (ok ? "ok" : "bad"); $("#fb").textContent = (ok ? "✔ " : "✘ ") + why;
+      later(() => { round++; round < 8 ? next() : finish("liss", score, "/8", "El método XY da el módulo del desfasaje, no el signo."); }, 2300);
+    });
+  };
+  next();
+};
+
+/* ---------- 7. Armá el osciloscopio ---------- */
+START.bloques = function () {
+  const CH = [
+    ["Canal vertical del osciloscopio analógico (de la entrada al TRC)", ["Acoplamiento AC/DC/GND", "Atenuador", "Amplificador vertical", "Línea de retardo", "Placas Y"]],
+    ["Circuito de disparo (de la señal a la rampa)", ["Comparador de nivel", "Selector de pendiente", "Schmitt trigger", "Derivador RC + diodo", "Generador de barrido"]],
+    ["Canal horizontal (del disparo al TRC)", ["Pulso de disparo", "Compuerta", "Generador de rampa", "Amplificador horizontal", "Placas X"]],
+    ["Osciloscopio digital (de la entrada a la imagen)", ["Atenuador", "Preamplificador", "Muestreo y retención", "Conversor A/D", "Memoria", "Microprocesador", "Pantalla"]],
+    ["Pasos del conversor A/D", ["Muestreo", "Cuantificación", "Codificación"]]
+  ];
+  let c = 0, total = 0, pos = 0, errs = 0;
+  shell("Armá el osciloscopio", `<div class="bar"><span>Cadena <b id="n">1</b>/${CH.length}</span><span>Puntos: <b id="sc">0</b></span></div><div class="q" id="q" style="min-height:0"></div><div class="chain" id="ch"></div><div class="chips" id="cp"></div><div class="fb" id="fb"></div>`);
+  const show = () => {
+    pos = 0; errs = 0; $("#n").textContent = c + 1; $("#q").textContent = "Tocá los bloques en orden: " + CH[c][0]; $("#ch").innerHTML = ""; $("#fb").textContent = "";
+    $("#cp").innerHTML = shuffle(CH[c][1]).map(b => `<button class="chip" data-b="${esc(b)}">${esc(b)}</button>`).join("");
+    $("#cp").querySelectorAll("button").forEach(b => b.onclick = () => {
+      if (b.dataset.b === CH[c][1][pos]) { b.classList.add("used"); $("#ch").innerHTML += (pos ? "<i>→</i>" : "") + `<span>${esc(b.dataset.b)}</span>`; pos++; $("#fb").textContent = "";
+        if (pos === CH[c][1].length) { const pts = Math.max(0, 20 - 5 * errs); total += pts; $("#sc").textContent = total; $("#fb").className = "fb ok"; $("#fb").textContent = `✔ Cadena completa. +${pts} puntos.`;
+          later(() => { c++; c < CH.length ? show() : finish("bloques", total, "pts", "Si podés dibujar estas cadenas de memoria, tenés el diagrama en bloques."); }, 1300); } }
+      else { errs++; $("#fb").className = "fb bad"; $("#fb").textContent = "✘ Ese bloque no va ahí todavía (−5)."; }
+    });
+  };
+  show();
+};
+
+/* ---------- 8. Aliasing ---------- */
+START.alias = function () {
+  let round = 0, score = 0;
+  shell("Cazador de aliasing", `<div class="bar"><span>Caso <b id="n">1</b>/8</span><span>Aciertos: <b id="sc">0</b></span></div><canvas id="cv"></canvas><div class="q" id="q" style="min-height:0;margin-top:10px"></div><div class="opts two" id="o"></div><div class="fb" id="fb"></div>`);
+  const cv = $("#cv");
+  const next = () => {
+    $("#n").textContent = round + 1; $("#fb").textContent = "";
+    const f = pick([10, 20, 40, 50, 100]), k = pick([0.6, 0.8, 1.25, 1.5, 2.5, 4, 5, 10]), fs = Math.round(f * k * 10) / 10, alias = fs < 2 * f;
+    const fa = Math.abs(fs - f);
+    const { ctx, w, h } = setupCanvas(cv, 0.55); drawGrid(ctx, w, h, 10, 6);
+    const cycles = alias ? 8 : 3, T = w / cycles, amp = h * 0.3, real = [], pts = [];
+    for (let x = 0; x <= w; x += 1) real.push([x, h / 2 - amp * Math.sin(2 * Math.PI * x / T)]);
+    ctx.globalAlpha = .35; trace(ctx, real, "#6bc5ff"); ctx.globalAlpha = 1;
+    const Ts = T * f / fs; for (let x = 0; x <= w; x += Ts) pts.push([x, h / 2 - amp * Math.sin(2 * Math.PI * x / T)]);
+    trace(ctx, pts, "#4dff9a"); ctx.fillStyle = "#ffb84d"; pts.forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 3, 0, 7); ctx.fill(); });
+    let ans, opts, why;
+    if (round % 2 === 0) { $("#q").innerHTML = `Señal de <b>${f} kHz</b> muestreada a <b>${fmt(fs)} kS/s</b>. ¿Hay aliasing?`; ans = alias ? "Sí, hay aliasing" : "No, se cumple Nyquist"; opts = ["Sí, hay aliasing", "No, se cumple Nyquist"];
+      why = alias ? `fs = ${fmt(fs)} < 2f = ${2 * f}: aparece una falsa de ${fmt(fa)} kHz.` : `fs = ${fmt(fs)} ≥ 2f = ${2 * f}. (Para verla bien conviene 4 a 10 muestras por período.)`; }
+    else { const mn = 2 * f; $("#q").innerHTML = `Señal de <b>${f} kHz</b>. ¿Cuál es la mínima frecuencia de muestreo teórica (Nyquist)?`; ans = mn + " kS/s"; opts = shuffle([f + " kS/s", mn + " kS/s", 4 * f + " kS/s", f / 2 + " kS/s"]); why = `fs > 2f = ${mn} kS/s. En la práctica se usan 4 a 10 veces f.`; }
+    $("#o").innerHTML = opts.map(o => `<button class="btn" data-o="${o}">${o}</button>`).join("");
+    $("#o").querySelectorAll("button").forEach(b => b.onclick = () => {
+      $("#o").querySelectorAll("button").forEach(x => { x.disabled = true; if (x.dataset.o === ans) x.classList.add("ok"); });
+      const ok = b.dataset.o === ans; if (ok) { score++; $("#sc").textContent = score; } else b.classList.add("bad");
+      $("#fb").className = "fb " + (ok ? "ok" : "bad"); $("#fb").textContent = (ok ? "✔ " : "✘ ") + why;
+      later(() => { round++; round < 8 ? next() : finish("alias", score, "/8", "En el digital, bajar SEC/DIV baja la frecuencia de muestreo: ojo con el aliasing."); }, 2400);
+    });
+  };
+  next();
+};
+
+/* ---------- logo animado ---------- */
+(function () {
+  const c = $("#logo"), x = c.getContext("2d"); let t = 0;
+  const still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const d = () => { x.clearRect(0, 0, 88, 88); x.strokeStyle = "#4dff9a"; x.lineWidth = 3; x.shadowColor = "#4dff9a"; x.shadowBlur = 8; x.beginPath();
+    for (let i = 0; i <= 88; i += 2) { const y = 44 - 22 * Math.sin(i / 14 + t); i ? x.lineTo(i, y) : x.moveTo(i, y); } x.stroke(); t += 0.06; if (!still) requestAnimationFrame(d); };
+  d();
+})();
+home();
+</script>
+</body>
+</html>
