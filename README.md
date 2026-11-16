@@ -13,7 +13,7 @@ Página web con 8 minijuegos de repaso. Funciona en la compu y en el celular, si
 | Verdadero o Falso relámpago | Todo el temario, en 60 segundos |
 | ¿Qué perilla es? | Controles del panel frontal |
 | Medí la señal | Vpp y frecuencia con la retícula y la sonda |
-| Compensá la sonda | Condición Rp·Cp = Ro·(Co + Cc) |
+| Compensá la sonda | Ejercicios de Rp·Cp = Ro·(Co + Cc) con animación del resultado |
 | Cazá el disparo | LEVEL, SLOPE y modo AUTO/NORMAL |
 | Lissajous | Desfasaje y relación de frecuencias en modo XY |
 | Armá el osciloscopio | Diagramas en bloques |

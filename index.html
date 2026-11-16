@@ -117,7 +117,7 @@ const GAMES = [
   { id: "vf", t: "Verdadero o Falso relámpago", d: "60 segundos. Afirmaciones de todo el temario, como las que caen en el parcial.", unit: "aciertos" },
   { id: "panel", t: "¿Qué perilla es?", d: "Te doy la función, elegí el control del panel frontal.", unit: "/10" },
   { id: "medir", t: "Medí la señal", d: "Leé la retícula: calculá Vpp y frecuencia con las escalas y la sonda.", unit: "/10" },
-  { id: "sonda", t: "Compensá la sonda", d: "Girá Cp hasta que la cuadrada del borne CAL quede perfecta.", unit: "pts" },
+  { id: "sonda", t: "Compensá la sonda", d: "Resolvé el ejercicio de compensación y mirá en el osciloscopio si la cuadrada del borne CAL quedó perfecta.", unit: "pts" },
   { id: "trigger", t: "Cazá el disparo", d: "LEVEL, SLOPE y MODE: cumplí cada misión de disparo.", unit: "/6" },
   { id: "liss", t: "Lissajous", d: "Modo XY: adiviná el desfasaje o la relación de frecuencias.", unit: "/8" },
   { id: "bloques", t: "Armá el osciloscopio", d: "Ordená los bloques de cada cadena de señal.", unit: "pts" },
@@ -158,8 +158,6 @@ const VF = [
   ["En un osciloscopio digital, una base de tiempo más lenta baja la frecuencia de muestreo.", true, "fs = puntos / (10 × TIME/DIV)."],
   ["Con 2500 puntos y 1 µs/div, la frecuencia de muestreo es 250 MS/s.", true, "2500 / 10 µs = 250 MS/s."],
   ["Con 8 bits el conversor A/D tiene 1024 niveles.", false, "Tiene 2⁸ = 256 niveles."],
-  ["Una sonda subcompensada muestra la cuadrada con los flancos redondeados.", true, "Atenúa de más las altas frecuencias."],
-  ["Un cable de masa largo en la sonda puede producir oscilaciones en los flancos.", true, "Su inductancia resuena con la capacidad de entrada."],
   ["La base de tiempo del osciloscopio analógico es una señal diente de sierra.", true, "La rampa lineal mueve el haz a velocidad constante."],
   ["Durante el retrazo el haz permanece encendido.", false, "El eje Z lo apaga para que no se vea la vuelta."],
   ["La rejilla de control del TRC regula el brillo (INTENSITY).", true, "Controla cuántos electrones pasan."],
@@ -308,37 +306,115 @@ START.medir = function () {
 
 /* ---------- 4. Compensá la sonda ---------- */
 START.sonda = function () {
-  let round = 0, total = 0, cur = null, done = false;
-  shell("Compensá la sonda", `<div class="bar"><span>Sonda <b id="n">1</b>/3</span><span>Puntos: <b id="sc">0</b></span></div><canvas id="cv"></canvas>
+  const N = 5;
+  let round = 0, total = 0, cur = null, done = false, hint = false;
+  shell("Compensá la sonda", `<div class="bar"><span>Ejercicio <b id="n">1</b>/${N}</span><span>Puntos: <b id="sc">0</b></span></div>
     <div class="info" id="set"></div>
-    <div class="row"><label for="cp">Trimmer Cp: <b id="cpv"></b> pF</label></div><input type="range" id="cp" min="2" max="30" step="0.1">
-    <div class="row"><button class="btn pri" id="go">Listo, está compensada</button></div><div class="fb" id="fb"></div>`);
-  const cv = $("#cv"), sl = $("#cp");
-  const draw = () => {
-    const { ctx, w, h } = setupCanvas(cv, 0.55); drawGrid(ctx, w, h, 10, 6);
-    const cp = parseFloat(sl.value), ct = cur.co + cur.cc, a = (cp / (cp + ct)) / 0.1;
-    const half = w / 4, amp = h * 0.17, tau = half * 0.16, pts = [];
-    for (let x = 0; x <= w; x += 1) { const k = Math.floor(x / half), t = x - k * half, hi = k % 2 === 0; const lvl = 1 + (a - 1) * Math.exp(-t / tau); const y = hi ? lvl : -lvl; pts.push([x, h / 2 - amp * y]); }
-    trace(ctx, pts); $("#cpv").textContent = fmt(cp);
+    <div class="row"><label for="ans" id="lab"></label></div>
+    <div class="row"><input id="ans" type="text" inputmode="decimal" autocomplete="off" placeholder="tu resultado" style="flex:1;min-width:0;font:inherit;font-size:16px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--ink)"><span id="un" style="align-self:center;font-weight:700"></span></div>
+    <div class="row"><button class="btn pri" id="go">Probar en el osciloscopio</button><button class="btn" id="hint">Pista (−50 %)</button></div>
+    <canvas id="cv"></canvas><div class="center" id="st" style="min-height:22px;font-weight:700;margin:6px 0"></div>
+    <div class="fb" id="fb"></div>`);
+  const cv = $("#cv"), inp = $("#ans");
+
+  /* forma de onda del borne CAL vista con la sonda: a = división en alta frec. / división en baja frec. */
+  const ratio = (cp, ct, k) => (cp / (cp + ct)) * (k + 1);   // k = Rp/Ro
+  const wave = (w, h, a) => {
+    a = Math.max(0.25, Math.min(2.1, a));
+    const half = w / 4, amp = h * 0.18, tau = half * 0.17, pts = [];
+    for (let x = 0; x <= w; x++) { const k = Math.floor(x / half), t = x - k * half, s = k % 2 === 0 ? 1 : -1; pts.push([x, h / 2 - amp * s * (1 + (a - 1) * Math.exp(-t / tau))]); }
+    return pts;
   };
+  const screen = () => { const o = setupCanvas(cv, 0.55); drawGrid(o.ctx, o.w, o.h, 10, 6); return o; };
+  const label = (ctx, txt, col) => { ctx.save(); ctx.font = "bold 12px ui-monospace,monospace"; ctx.fillStyle = col; ctx.fillText(txt, 8, 16); ctx.restore(); };
+  const idle = () => { const { ctx } = screen(); label(ctx, "CAL 1 kHz · esperando tu Cp…", "rgba(160,210,190,.8)"); };
+
+  /* barrido: el haz dibuja la señal de izquierda a derecha */
+  const sweep = (a, txt, col, ghost, cb) => {
+    const t0 = performance.now(), dur = 1300;
+    const step = now => {
+      const { ctx, w, h } = screen(); const p = Math.min(1, (now - t0) / dur), pts = wave(w, h, a), n = Math.max(2, Math.floor(p * pts.length));
+      if (ghost) trace(ctx, wave(w, h, ghost), "rgba(77,255,154,.22)");
+      trace(ctx, pts.slice(0, n), col); label(ctx, txt, col);
+      const head = pts[n - 1]; ctx.save(); ctx.fillStyle = "#eafff2"; ctx.shadowColor = col; ctx.shadowBlur = 14; ctx.beginPath(); ctx.arc(head[0], head[1], 3.2, 0, 7); ctx.fill(); ctx.restore();
+      if (p < 1) raf = requestAnimationFrame(step); else { const o = screen(); if (ghost) trace(o.ctx, wave(o.w, o.h, ghost), "rgba(77,255,154,.22)"); trace(o.ctx, pts, col); label(o.ctx, txt, col); cb && cb(); }
+    };
+    raf = requestAnimationFrame(step);
+  };
+  /* el trimmer gira del valor del alumno al correcto y la forma se corrige */
+  const morph = (cpFrom, cpTo, ct, k, ghostA, cb) => {
+    const t0 = performance.now(), dur = 1800;
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2, cp = cpFrom + (cpTo - cpFrom) * e;
+      const { ctx, w, h } = screen(); trace(ctx, wave(w, h, ghostA), "rgba(255,120,120,.25)");
+      trace(ctx, wave(w, h, ratio(cp, ct, k))); label(ctx, `Girando Cp… ${fmt(cp)} pF`, "#4dff9a");
+      if (p < 1) raf = requestAnimationFrame(step); else cb && cb();
+    };
+    raf = requestAnimationFrame(step);
+  };
+
+  const GEN = [
+    () => { const co = pick([15, 20, 25, 30]), cc = pick([60, 70, 80, 90, 100, 110]);
+      return { txt: `Sonda <b>10X</b> (Rp = 9 MΩ) en un osciloscopio con Ro = 1 MΩ y <b>Co = ${co} pF</b>. El cable tiene <b>Cc = ${cc} pF</b>. ¿Qué valor tiene que tener Cp para que la sonda quede compensada?`,
+        lab: "Cp =", un: "pF", ans: (co + cc) / 9, k: 9, sim: v => [v, co + cc],
+        sol: `Rp·Cp = Ro·(Co + Cc) ⇒ Cp = Ro·(Co + Cc)/Rp = (${co} + ${cc}) pF / 9 = <b>${fmt((co + cc) / 9)} pF</b>` }; },
+    () => { const co = pick([10, 12, 15, 20]), cc = pick([80, 90, 100, 120, 140]);
+      return { txt: `Sonda <b>100X</b> en un osciloscopio con Ro = 1 MΩ, <b>Co = ${co} pF</b>; cable de <b>Cc = ${cc} pF</b>. ¿Cuánto vale Cp? (Primero deducí Rp a partir de la atenuación.)`,
+        lab: "Cp =", un: "pF", ans: (co + cc) / 99, k: 99, sim: v => [v, co + cc],
+        sol: `100X ⇒ Ro/(Rp + Ro) = 1/100 ⇒ Rp = 99 MΩ. Cp = (Co + Cc)/99 = ${co + cc} pF / 99 = <b>${fmt((co + cc) / 99)} pF</b>` }; },
+    () => { const c1 = pick([15, 20]), c2 = pick([25, 30, 35]), cc = pick([70, 80, 90, 100]);
+      return { txt: `Una sonda 10X (Rp = 9 MΩ) con cable de <b>Cc = ${cc} pF</b> estaba compensada en un osciloscopio con Co = ${c1} pF. La pasás a otro osciloscopio con Ro = 1 MΩ y <b>Co = ${c2} pF</b>. ¿A qué valor hay que llevar Cp?`,
+        lab: "Cp nuevo =", un: "pF", ans: (c2 + cc) / 9, k: 9, sim: v => [v, c2 + cc],
+        sol: `Solo importa el osciloscopio nuevo: Cp = (Co + Cc)/9 = (${c2} + ${cc}) pF / 9 = <b>${fmt((c2 + cc) / 9)} pF</b> (antes era ${fmt((c1 + cc) / 9)} pF: por eso hay que compensar cada vez que cambiás de equipo).` }; },
+    () => { const cpm = pick([10, 12, 14, 15]), co = pick([15, 20, 25]);
+      return { txt: `El trimmer de una sonda 10X (Rp = 9 MΩ) llega como máximo a <b>Cp = ${cpm} pF</b>. El osciloscopio tiene Ro = 1 MΩ y <b>Co = ${co} pF</b>. ¿Cuál es la capacidad de cable Cc más grande que todavía se puede compensar?`,
+        lab: "Cc máx =", un: "pF", ans: 9 * cpm - co, k: 9, sim: v => [cpm, co + v],
+        sol: `9·Cp = Co + Cc ⇒ Cc = 9·${cpm} − ${co} = <b>${fmt(9 * cpm - co)} pF</b>. Con un cable de más capacidad, la sonda queda subcompensada aunque el trimmer esté al máximo.` }; },
+    () => { const cp = pick([10, 11, 12]), cc = pick([70, 75, 80]);
+      return { txt: `Una sonda 10X (Rp = 9 MΩ) con el trimmer fijo en <b>Cp = ${cp} pF</b> y cable de <b>Cc = ${cc} pF</b>. ¿Qué capacidad de entrada Co debería tener el osciloscopio (Ro = 1 MΩ) para que quede compensada?`,
+        lab: "Co =", un: "pF", ans: 9 * cp - cc, k: 9, sim: v => [cp, v + cc],
+        sol: `Co = 9·Cp − Cc = 9·${cp} − ${cc} = <b>${fmt(9 * cp - cc)} pF</b>` }; },
+  ];
+  let order = [];
   const next = () => {
-    done = false; cur = { co: pick([15, 20, 25, 30]), cc: pick([60, 70, 80, 100, 110]) };
-    const ideal = (cur.co + cur.cc) / 9; let start; do { start = rnd(3, 29); } while (Math.abs(start - ideal) < 3);
-    sl.value = start.toFixed(1); sl.disabled = false; $("#n").textContent = round + 1; $("#fb").textContent = "";
-    $("#set").innerHTML = `Sonda 10X en el borne CAL (1 kHz). Rp = 9 MΩ, Ro = 1 MΩ, <b>Co = ${cur.co} pF</b>, <b>Cc = ${cur.cc} pF</b>. Podés hacerlo a ojo o calcular Cp.`;
-    $("#go").textContent = "Listo, está compensada"; $("#go").onclick = check; draw();
+    if (!order.length) order = shuffle(GEN.map((_, i) => i));
+    cur = GEN[order.pop()](); done = false; hint = false; cancelAnimationFrame(raf);
+    $("#n").textContent = round + 1; $("#set").innerHTML = cur.txt; $("#lab").textContent = cur.lab; $("#un").textContent = cur.un;
+    inp.value = ""; inp.disabled = false; $("#fb").textContent = ""; $("#fb").className = "fb"; $("#st").textContent = "";
+    $("#hint").disabled = false; $("#hint").style.display = ""; $("#go").disabled = false; $("#go").textContent = "Probar en el osciloscopio"; $("#go").onclick = check; idle();
   };
+  $("#hint").onclick = () => { if (done || hint) return; hint = true; $("#hint").disabled = true;
+    $("#fb").className = "fb"; $("#fb").innerHTML = "Pista: la sonda queda compensada cuando las dos constantes de tiempo son iguales, <b>Rp·Cp = Ro·(Co + Cc)</b>. Con Rp = 9 Ro queda 9·Cp = Co + Cc."; };
   const check = () => {
-    if (done) return; done = true; sl.disabled = true;
-    const ideal = (cur.co + cur.cc) / 9, cp = parseFloat(sl.value), err = Math.abs(cp - ideal) / ideal;
-    const pts = err < 0.03 ? 100 : err < 0.08 ? 70 : err < 0.15 ? 40 : 0; total += pts; $("#sc").textContent = total;
-    const st = err < 0.03 ? "compensada" : cp < ideal ? "subcompensada (flancos redondeados: faltan altas frecuencias)" : "sobrecompensada (picos: sobran altas frecuencias)";
-    $("#fb").className = "fb " + (pts >= 70 ? "ok" : "bad");
-    $("#fb").innerHTML = `Quedó <b>${st}</b>. Cp ideal = (Co + Cc) / 9 = ${fmt(ideal)} pF, porque Rp·Cp = Ro·(Co + Cc). +${pts} puntos.`;
-    round++; $("#go").textContent = round < 3 ? "Siguiente sonda" : "Ver resultado";
-    $("#go").onclick = () => round < 3 ? next() : finish("sonda", total, "pts", "Sub: redondeada. Sobre: picos. Perfecta: cuadrada.");
+    if (done) return;
+    const v = parseFloat(inp.value.replace(",", "."));
+    if (!isFinite(v) || v <= 0) { $("#fb").className = "fb bad"; $("#fb").textContent = "Escribí un número positivo (en pF)."; return; }
+    done = true; inp.disabled = true; inp.blur(); $("#hint").style.display = "none"; $("#go").onclick = null; $("#go").disabled = true; $("#go").textContent = "Midiendo…";
+    cv.scrollIntoView({ block: "center", behavior: "smooth" });
+    const err = Math.abs(v - cur.ans) / cur.ans;
+    let pts = err <= 0.03 ? 100 : err <= 0.08 ? 60 : err <= 0.15 ? 30 : 0; if (hint) pts = Math.round(pts / 2);
+    const [cpU, ctU] = cur.sim(v), aU = ratio(cpU, ctU, cur.k), ok = Math.abs(aU - 1) <= 0.03;
+    const name = ok ? "COMPENSADA" : aU < 1 ? "SUBCOMPENSADA" : "SOBRECOMPENSADA", col = ok ? "#4dff9a" : aU < 1 ? "#ffd166" : "#ff6b6b";
+    $("#st").textContent = "Midiendo…"; $("#st").style.color = "";
+    sweep(aU, `Con tu valor: ${fmt(v)} ${cur.un}`, col, null, () => {
+      total += pts; $("#sc").textContent = total;
+      $("#st").textContent = name; $("#st").style.color = col;
+      const why = ok ? "La cuadrada sale perfecta: el divisor capacitivo divide igual que el resistivo."
+        : aU < 1 ? "Flancos redondeados: el divisor capacitivo atenúa de más las altas frecuencias." : "Picos en los flancos: el divisor capacitivo deja pasar de más las altas frecuencias.";
+      $("#fb").className = "fb " + (pts >= 60 ? "ok" : "bad");
+      $("#fb").innerHTML = `${why}<br>${cur.sol}<br>+${pts} puntos${hint ? " (con pista)" : ""}.`;
+      const end = () => { round++; $("#go").disabled = false; $("#go").textContent = round < N ? "Siguiente ejercicio" : "Ver resultado";
+        $("#go").onclick = () => round < N ? next() : finish("sonda", total, "pts", "Rp·Cp = Ro·(Co + Cc). Sub: redondeada. Sobre: picos. Perfecta: cuadrada."); };
+      if (ok) end();
+      else later(() => { const [cpOk, ctOk] = cur.sim(cur.ans);
+        // Cp equivalente que produce la misma forma que el valor del alumno (si el error estaba en Cc o Co, se ve como un ajuste de Cp)
+        const cpFrom = aU * ctOk / ((cur.k + 1) - aU);
+        morph(cpFrom, cpOk, ctOk, cur.k, aU, () => {
+          const o = screen(); trace(o.ctx, wave(o.w, o.h, 1)); label(o.ctx, `Valor correcto: ${fmt(cur.ans)} ${cur.un}`, "#4dff9a"); end(); }); }, 900);
+    });
   };
-  sl.oninput = draw; next();
+  inp.onkeydown = e => { if (e.key === "Enter") ($("#go").onclick || (() => {}))(); };
+  next();
 };
 
 /* ---------- 5. Cazá el disparo ---------- */
