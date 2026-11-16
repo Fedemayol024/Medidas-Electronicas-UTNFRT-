@@ -88,6 +88,31 @@ let timers = [], outs = [];
 let raf = 0;
 function clearAll() { timers.forEach(clearInterval); timers = []; outs.forEach(clearTimeout); outs = []; cancelAnimationFrame(raf); raf = 0; }
 function later(fn, ms) { outs.push(setTimeout(fn, ms)); }
+/* ---------- sin repetidos ---------- */
+/* mazo: no repite ninguna clave hasta agotar todas; recuerda el avance entre partidas */
+function deck(name, keys) {
+  const K = "osc-deck-" + name, all = new Set(keys);
+  let st = null; try { st = JSON.parse(localStorage.getItem(K) || "null"); } catch (e) {}
+  let rest = st && Array.isArray(st.rest) ? st.rest.filter(k => all.has(k)) : null, done = st && Array.isArray(st.done) ? st.done.filter(k => all.has(k)) : [];
+  if (!rest) rest = shuffle(keys); else { const known = new Set([...rest, ...done]); rest = rest.concat(shuffle(keys.filter(k => !known.has(k)))); }
+  const used = new Set();
+  const save = () => { try { localStorage.setItem(K, JSON.stringify({ rest, done })); } catch (e) {} };
+  return () => {
+    if (!rest.length) { const last = done[done.length - 1]; rest = shuffle(keys.filter(k => !used.has(k))); done = []; if (!rest.length) { used.clear(); rest = shuffle(keys); }
+      if (rest.length > 1 && rest[0] === last) rest.push(rest.shift()); }
+    const k = rest.shift(); used.add(k); done.push(k); save(); return k;
+  };
+}
+/* generadores aleatorios: no repite una combinación entre las últimas 200 que salieron */
+function fresh(name, gen, keyOf) {
+  const K = "osc-recent-" + name; let rec = [];
+  try { rec = JSON.parse(localStorage.getItem(K) || "[]") || []; } catch (e) {}
+  let it, k, n = 0;
+  do { it = gen(); k = keyOf(it); n++; } while (rec.includes(k) && n < 200);
+  rec.push(k); if (rec.length > 200) rec = rec.slice(-200);
+  try { localStorage.setItem(K, JSON.stringify(rec)); } catch (e) {}
+  return it;
+}
 function fmt(v) { return (Math.round(v * 100) / 100).toString().replace(".", ","); }
 
 /* ---------- pantalla de osciloscopio ---------- */
@@ -214,14 +239,15 @@ const VF = [
   ["La retícula típica tiene 8 divisiones verticales y 10 horizontales.", true, "Con 5 subdivisiones por división."]
 ];
 START.vf = function () {
-  let list = shuffle(VF), i = 0, score = 0, left = 60, lock = false;
+  const draw = deck("vf", VF.map(v => v[0])), byQ = new Map(VF.map(v => [v[0], v]));
+  let it = null, score = 0, left = 60, lock = false;
   shell("Verdadero o Falso relámpago", `<div class="bar"><span>Tiempo: <b id="tm">60</b> s</span><span>Aciertos: <b id="sc">0</b></span></div>
     <div class="q" id="q"></div><div class="opts two"><button class="btn" id="bv">VERDADERO</button><button class="btn" id="bf">FALSO</button></div><div class="fb" id="fb"></div>`);
-  const show = () => { if (i >= list.length) { list = shuffle(VF); i = 0; } $("#q").textContent = list[i][0]; };
+  const show = () => { it = byQ.get(draw()); $("#q").textContent = it[0]; };
   const ans = v => {
-    if (lock) return; const it = list[i], ok = v === it[1];
-    if (ok) { score++; $("#sc").textContent = score; $("#fb").className = "fb ok"; $("#fb").textContent = "✔ Bien la anterior: " + it[2]; i++; show(); }
-    else { lock = true; $("#fb").className = "fb bad"; $("#fb").textContent = "✘ " + (it[1] ? "Era verdadero. " : "Era falso. ") + it[2]; later(() => { lock = false; i++; if (left > 0) show(); }, 1700); }
+    if (lock) return; const q = it, ok = v === q[1];
+    if (ok) { score++; $("#sc").textContent = score; $("#fb").className = "fb ok"; $("#fb").textContent = "✔ Bien la anterior: " + q[2]; show(); }
+    else { lock = true; $("#fb").className = "fb bad"; $("#fb").textContent = "✘ " + (q[1] ? "Era verdadero. " : "Era falso. ") + q[2]; later(() => { lock = false; if (left > 0) show(); }, 1700); }
   };
   $("#bv").onclick = () => ans(true); $("#bf").onclick = () => ans(false); show();
   timers.push(setInterval(() => { left--; const t = $("#tm"); if (t) t.textContent = left; if (left <= 0) finish("vf", score, "aciertos", score >= 20 ? "Excelente ritmo." : "Repasá las que fallaste y volvé a intentar."); }, 1000));
@@ -256,7 +282,8 @@ const PANEL = [
   ["SET TO 50 % (digital)", "Lleva el nivel de disparo a la mitad de la señal."]
 ];
 START.panel = function () {
-  const list = shuffle(PANEL).slice(0, 10); let i = 0, score = 0;
+  const draw = deck("panel", PANEL.map(p => p[0])), byK = new Map(PANEL.map(p => [p[0], p]));
+  const list = Array.from({ length: Math.min(10, PANEL.length) }, () => byK.get(draw())); let i = 0, score = 0;
   shell("¿Qué perilla es?", `<div class="bar"><span>Pregunta <b id="n">1</b>/10</span><span>Aciertos: <b id="sc">0</b></span></div><div class="q" id="q"></div><div class="opts" id="o"></div><div class="fb" id="fb"></div>`);
   const show = () => {
     const it = list[i]; $("#n").textContent = i + 1; $("#q").textContent = it[1]; $("#fb").textContent = "";
@@ -282,9 +309,12 @@ START.medir = function () {
   const cv = $("#cv");
   const tdivs = [[0.1e-3, "0,1 ms"], [0.2e-3, "0,2 ms"], [0.5e-3, "0,5 ms"], [1e-3, "1 ms"], [2e-3, "2 ms"], [5e-3, "5 ms"]];
   const next = () => {
-    const vd = pick([0.1, 0.2, 0.5, 1, 2, 5]), td = pick(tdivs), probe = pick([1, 1, 10]);
-    const ppDiv = pick([2, 2.4, 3, 3.6, 4, 4.4, 5, 5.6, 6]), perDiv = pick([2, 2.5, 3, 4, 5]);
-    cur = { vpp: ppDiv * vd * probe, f: 1 / (perDiv * td[0]), ppDiv, perDiv, vd, td, probe };
+    cur = fresh("medir", () => {
+      const vd = pick([0.1, 0.2, 0.5, 1, 2, 5]), td = pick(tdivs), probe = pick([1, 1, 10]);
+      const ppDiv = pick([2, 2.4, 3, 3.6, 4, 4.4, 5, 5.6, 6]), perDiv = pick([2, 2.5, 3, 4, 5]);
+      return { vpp: ppDiv * vd * probe, f: 1 / (perDiv * td[0]), ppDiv, perDiv, vd, td, probe };
+    }, c => [c.vd, c.td[1], c.probe, c.ppDiv, c.perDiv].join("|"));
+    const { vd, td, probe, ppDiv, perDiv } = cur;
     $("#n").textContent = round + 1; $("#vpp").value = ""; $("#fr").value = ""; $("#fb").textContent = ""; $("#go").textContent = "Comprobar"; $("#go").onclick = check;
     $("#set").innerHTML = `VOLTS/DIV: <b>${fmt(vd)} V</b> · TIME/DIV: <b>${td[1]}</b> · Sonda: <b>${probe}X</b> (el osciloscopio no la detecta) · VAR en CAL`;
     const { ctx, w, h } = setupCanvas(cv); drawGrid(ctx, w, h);
@@ -378,7 +408,7 @@ START.sonda = function () {
   let order = [];
   const next = () => {
     if (!order.length) order = shuffle(GEN.map((_, i) => i));
-    cur = GEN[order.pop()](); done = false; hint = false; cancelAnimationFrame(raf);
+    const g = GEN[order.pop()]; cur = fresh("sonda", g, c => c.txt); done = false; hint = false; cancelAnimationFrame(raf);
     $("#n").textContent = round + 1; $("#set").innerHTML = cur.txt; $("#lab").textContent = cur.lab; $("#un").textContent = cur.un;
     inp.value = ""; inp.disabled = false; $("#fb").textContent = ""; $("#fb").className = "fb"; $("#st").textContent = "";
     $("#hint").disabled = false; $("#hint").style.display = ""; $("#go").disabled = false; $("#go").textContent = "Probar en el osciloscopio"; $("#go").onclick = check; idle();
@@ -462,15 +492,17 @@ START.trigger = function () {
 /* ---------- 6. Lissajous ---------- */
 START.liss = function () {
   let round = 0, score = 0;
+  const PH = [0, 30, 45, 90, 135, 150, 180], RA = [[1, 2], [2, 1], [1, 3], [3, 1], [2, 3], [3, 2]];
+  const drawPh = deck("liss-fase", PH.map(String)), drawRa = deck("liss-rel", RA.map(r => r.join(":")));
   shell("Lissajous", `<div class="bar"><span>Figura <b id="n">1</b>/8</span><span>Aciertos: <b id="sc">0</b></span></div><canvas id="cv"></canvas><div class="q" id="q" style="min-height:0;margin-top:10px"></div><div class="opts two" id="o"></div><div class="fb" id="fb"></div>`);
   const cv = $("#cv");
   const next = () => {
     $("#n").textContent = round + 1; $("#fb").textContent = "";
     const isPhase = round % 2 === 0; let fx = 1, fy = 1, ph = 0, ans, opts, why;
-    if (isPhase) { const p = pick([0, 30, 45, 90, 135, 150, 180]); ph = p * Math.PI / 180; ans = p + "°"; opts = shuffle(["0°", "30°", "45°", "90°", "135°", "150°", "180°"].filter(o => o !== ans)).slice(0, 3).concat(ans);
+    if (isPhase) { const p = Number(drawPh()); ph = p * Math.PI / 180; ans = p + "°"; opts = shuffle(["0°", "30°", "45°", "90°", "135°", "150°", "180°"].filter(o => o !== ans)).slice(0, 3).concat(ans);
       why = p === 0 ? "Recta a 45°: en fase." : p === 180 ? "Recta inclinada al otro lado: 180°." : p === 90 ? "Círculo: 90°." : (p < 90 ? "Eje mayor en 1.º y 3.º cuadrante: φ = arcsen(B/A)." : "Eje mayor en 2.º y 4.º cuadrante: φ = 180° − arcsen(B/A).");
       $("#q").textContent = "Dos senoidales de igual frecuencia y amplitud en modo XY. ¿Cuál es el desfasaje?"; }
-    else { const r = pick([[1, 2], [2, 1], [1, 3], [3, 1], [2, 3], [3, 2]]); fx = r[0]; fy = r[1]; ph = Math.PI / 2; ans = `fy/fx = ${fy}:${fx}`;
+    else { const r = drawRa().split(":").map(Number); fx = r[0]; fy = r[1]; ph = Math.PI / 2; ans = `fy/fx = ${fy}:${fx}`;
       opts = shuffle([[1, 2], [2, 1], [1, 3], [3, 1], [2, 3], [3, 2]].map(x => `fy/fx = ${x[1]}:${x[0]}`).filter(o => o !== ans)).slice(0, 3).concat(ans);
       why = `Tangencias con una recta horizontal: ${fy}. Con una vertical: ${fx}. fy/fx = tangencias horizontales / verticales.`;
       $("#q").textContent = "CH1 en X y CH2 en Y. ¿Cuál es la relación de frecuencias?"; }
@@ -515,11 +547,13 @@ START.bloques = function () {
 /* ---------- 8. Aliasing ---------- */
 START.alias = function () {
   let round = 0, score = 0;
+  const FS = [10, 20, 40, 50, 100], KS = [0.6, 0.8, 1.25, 1.5, 2.5, 4, 5, 10];
+  const drawCase = deck("alias-caso", FS.flatMap(f => KS.map(k => f + "|" + k))), drawNy = deck("alias-nyq", FS.map(String));
   shell("Cazador de aliasing", `<div class="bar"><span>Caso <b id="n">1</b>/8</span><span>Aciertos: <b id="sc">0</b></span></div><canvas id="cv"></canvas><div class="q" id="q" style="min-height:0;margin-top:10px"></div><div class="opts two" id="o"></div><div class="fb" id="fb"></div>`);
   const cv = $("#cv");
   const next = () => {
     $("#n").textContent = round + 1; $("#fb").textContent = "";
-    const f = pick([10, 20, 40, 50, 100]), k = pick([0.6, 0.8, 1.25, 1.5, 2.5, 4, 5, 10]), fs = Math.round(f * k * 10) / 10, alias = fs < 2 * f;
+    const [f, k] = round % 2 === 0 ? drawCase().split("|").map(Number) : [Number(drawNy()), pick(KS)], fs = Math.round(f * k * 10) / 10, alias = fs < 2 * f;
     const fa = Math.abs(fs - f);
     const { ctx, w, h } = setupCanvas(cv, 0.55); drawGrid(ctx, w, h, 10, 6);
     const cycles = alias ? 8 : 3, T = w / cycles, amp = h * 0.3, real = [], pts = [];
