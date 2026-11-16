@@ -4,7 +4,7 @@ Material de estudio para el 2º parcial (osciloscopios).
 
 ## Osciloscopio Arcade
 
-Página web con 8 minijuegos de repaso. Funciona en la compu y en el celular, sin instalar nada.
+Página web con 9 minijuegos de repaso. Funciona en la compu y en el celular, sin instalar nada.
 
 **Jugar:** https://fedemayol024.github.io/Medidas-Electronicas-UTNFRT-/
 
@@ -18,6 +18,7 @@ Página web con 8 minijuegos de repaso. Funciona en la compu y en el celular, si
 | Lissajous | Desfasaje y relación de frecuencias en modo XY |
 | Armá el osciloscopio | Diagramas en bloques |
 | Cazador de aliasing | Muestreo y Nyquist en el osciloscopio digital |
+| Panel frontal | Nombre y función de cada perilla y sección (analógico y digital), con modo explorar |
 
 Los récords se guardan solo en el navegador de cada dispositivo.
 
