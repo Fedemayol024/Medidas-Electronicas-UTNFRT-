@@ -21,9 +21,9 @@ Página web con 8 minijuegos de repaso. Funciona en la compu y en el celular, si
 
 Los récords se guardan solo en el navegador de cada dispositivo.
 
-## Guía teórica
+## Guía de estudio
 
-[Guia_Teorica_Medidas.pdf](Guia_Teorica_Medidas.pdf): resumen teórico en formato celular (osciloscopio analógico, disparo, sonda, mediciones y osciloscopio digital).
+[Guia_Estudio_Medidas.pdf](Guia_Estudio_Medidas.pdf): guía teórica explicativa en formato celular (TRC, base de tiempo, canal vertical y horizontal, disparo, panel frontal, sonda, mediciones de tensión y corriente, osciloscopio digital), con preguntas de repaso y hoja de fórmulas. También se abre desde el menú del juego.
 
 ---
 Hecho con la ayuda de Claude (Anthropic).

@@ -29,9 +29,9 @@ p{line-height:1.5;font-size:14px}
 .card .b{font-size:12px;color:var(--amber);margin-top:8px}
 .bar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;font-size:13px;color:var(--dim)}
 .bar b{color:var(--ink)}
-button.btn{font:inherit;font-size:14px;font-weight:700;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;min-height:46px}
+button.btn,a.btn{display:inline-flex;align-items:center;font:inherit;font-size:14px;font-weight:700;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;min-height:46px}
 button.btn:hover,button.btn:focus-visible{border-color:var(--trace);outline:none}
-button.btn.pri{background:var(--trace);color:#06140d;border-color:var(--trace)}
+button.btn.pri,a.btn.pri{background:var(--trace);color:#06140d;border-color:var(--trace)}
 button.btn.ok{border-color:var(--trace);color:var(--trace)}
 button.btn.bad{border-color:var(--red);color:var(--red)}
 button.btn:disabled{opacity:.55;cursor:default}
@@ -126,7 +126,8 @@ const GAMES = [
 function home() {
   clearAll();
   app.innerHTML = `<p>Elegí un minijuego. Cada uno repasa una parte del temario del Ing. Teruel: osciloscopio analógico, disparo, sonda, mediciones y osciloscopio digital.</p>
-  <div class="grid">${GAMES.map(g => `<button class="card" data-g="${g.id}"><div class="t">${g.t}</div><div class="d">${g.d}</div><div class="b">${g.id in scores ? "Récord: " + scores[g.id] + " " + g.unit : "Sin jugar"}</div></button>`).join("")}</div>`;
+  <div class="grid">${GAMES.map(g => `<button class="card" data-g="${g.id}"><div class="t">${g.t}</div><div class="d">${g.d}</div><div class="b">${g.id in scores ? "Récord: " + scores[g.id] + " " + g.unit : "Sin jugar"}</div></button>`).join("")}</div>
+  <div class="row" style="justify-content:center;margin-top:14px"><a class="btn pri" href="Guia_Estudio_Medidas.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Abrir la guía de estudio (PDF)</a></div>`;
   app.querySelectorAll(".card").forEach(b => b.onclick = () => START[b.dataset.g]());
   window.scrollTo(0, 0);
 }
@@ -147,6 +148,18 @@ const START = {};
 
 /* ---------- 1. Verdadero o falso ---------- */
 const VF = [
+  ["Al pasar TIME/DIV de 0,2 ms/div a 1 ms/div entran más ciclos en la pantalla.", true, "La rampa es más suave: la pantalla abarca más tiempo."],
+  ["TIME/DIV cambia la pendiente de la rampa del generador de barrido.", true, "Cambia el capacitor (y la corriente) del generador."],
+  ["Una senoidal serviría igual que el diente de sierra como base de tiempo.", false, "No es lineal y su vuelta sería tan lenta como la ida."],
+  ["La rampa se genera cargando un capacitor con corriente constante.", true, "V = I·t/C: una recta."],
+  ["Se ve una línea continua gracias a la persistencia del fósforo y de la retina.", true, "El haz es un solo punto que barre muchas veces por segundo."],
+  ["La luz UNCAL indica que VAR no está en la posición calibrada.", true, "Las mediciones por divisiones serían incorrectas."],
+  ["Una señal de 4 Vpp en 2 V/div ocupa 4 divisiones.", false, "Ocupa 2 divisiones: 4 V / 2 V/div."],
+  ["En un osciloscopio digital, una base de tiempo más lenta baja la frecuencia de muestreo.", true, "fs = puntos / (10 × TIME/DIV)."],
+  ["Con 2500 puntos y 1 µs/div, la frecuencia de muestreo es 250 MS/s.", true, "2500 / 10 µs = 250 MS/s."],
+  ["Con 8 bits el conversor A/D tiene 1024 niveles.", false, "Tiene 2⁸ = 256 niveles."],
+  ["Una sonda subcompensada muestra la cuadrada con los flancos redondeados.", true, "Atenúa de más las altas frecuencias."],
+  ["Un cable de masa largo en la sonda puede producir oscilaciones en los flancos.", true, "Su inductancia resuena con la capacidad de entrada."],
   ["La base de tiempo del osciloscopio analógico es una señal diente de sierra.", true, "La rampa lineal mueve el haz a velocidad constante."],
   ["Durante el retrazo el haz permanece encendido.", false, "El eje Z lo apaga para que no se vea la vuelta."],
   ["La rejilla de control del TRC regula el brillo (INTENSITY).", true, "Controla cuántos electrones pasan."],
