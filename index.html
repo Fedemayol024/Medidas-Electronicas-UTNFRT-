@@ -164,7 +164,7 @@ function home() {
   clearAll();
   app.innerHTML = `<p>Elegí un minijuego. Cada uno repasa una parte del temario del Ing. Teruel: osciloscopio analógico, disparo, sonda, mediciones y osciloscopio digital.</p>
   <div class="grid">${GAMES.map(g => `<button class="card" data-g="${g.id}"><div class="t">${g.t}</div><div class="d">${g.d}</div><div class="b">${g.id === "frente" ? (["analog", "digital"].map(k => ("frente-" + k) in scores ? (k === "analog" ? "Analógico " : "Digital ") + scores["frente-" + k] + "/16" : "").filter(Boolean).join(" · ") || "Sin jugar") : g.id in scores ? "Récord: " + scores[g.id] + " " + g.unit : "Sin jugar"}</div></button>`).join("")}</div>
-  <div class="row" style="justify-content:center;margin-top:14px"><a class="btn pri" href="Guia_Estudio_Medidas.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Abrir la guía de estudio (PDF)</a></div>`;
+  <div class="row" style="justify-content:center;margin-top:14px"><a class="btn pri" href="Guia_Estudio_Medidas.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Abrir la guía de estudio (PDF)</a><a class="btn" href="tc2-sc/" style="text-decoration:none">→ Circuitos &amp; Señales (TC II + SC)</a></div>`;
   app.querySelectorAll(".card").forEach(b => b.onclick = () => START[b.dataset.g]());
   window.scrollTo(0, 0);
 }

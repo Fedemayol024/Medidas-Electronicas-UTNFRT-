@@ -28,3 +28,9 @@ Los récords se guardan solo en el navegador de cada dispositivo.
 
 ---
 Hecho con la ayuda de Claude (Anthropic).
+
+## Circuitos & Señales (TC II + SC)
+
+En [`tc2-sc/`](tc2-sc/) está la página de práctica para Teoría de Circuitos II (Ing. Caneda) y Sistemas de Comunicaciones (Ing. Peralta): 13 minijuegos de práctica y teoría (atenuadores, K constante, Butterworth, Sallen-Key, respuesta en frecuencia, plano Z, IIR/FIR, PCM, códigos de línea, constelaciones y diagrama de ojo) y la guía conjunta en PDF.
+
+Sitio: https://fedemayol024.github.io/Medidas-Electronicas-UTNFRT-/tc2-sc/
