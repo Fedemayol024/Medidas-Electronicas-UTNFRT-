@@ -93,7 +93,7 @@ svg.ckt text.v{fill:var(--trace)}
 <body>
 <header>
   <canvas class="logo" id="logo" width="88" height="88" aria-hidden="true"></canvas>
-  <div><h1>CIRCUITOS &amp; SEÑALES</h1><p>TC II (24/11) + Sistemas de Comunicaciones (26/11) · práctica y teoría</p></div>
+  <div><h1>CIRCUITOS &amp; SEÑALES</h1><p>TC II (24/11) + Sistemas de Comunicaciones · práctica y teoría</p></div>
 </header>
 <main id="app"></main>
 <footer>Ejercicios generados al azar con las fórmulas de las cátedras de Caneda y Peralta. Los puntajes y el avance se guardan solo en este dispositivo.</footer>
@@ -215,10 +215,11 @@ function home() {
   clearAll();
   const card = g => `<button class="card" data-g="${g.id}"><div class="t">${g.t}</div><div class="d">${g.d}</div><div class="b">${g.id in scores ? "Récord: " + scores[g.id] + " " + g.unit : "Sin jugar"}</div></button>`;
   app.innerHTML = `<p>Práctica y teoría para los dos parciales que vienen. Los ejercicios salen al azar y no se repiten hasta agotar cada banco.</p>
-  <div class="row" style="justify-content:center"><a class="btn pri" href="Guia_Conjunta_TC2_SC_Celular.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Guía conjunta (celular)</a><a class="btn" href="Guia_Conjunta_TC2_SC_PC.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Versión A4</a></div>
+  <div class="row" style="justify-content:center"><a class="btn pri" href="Guia_TC2_Celular.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Guía TC II desde cero</a><a class="btn" href="Guia_TC2_PC.pdf" target="_blank" rel="noopener" style="text-decoration:none">A4</a></div>
+  <div class="row" style="justify-content:center"><a class="btn" href="Guia_Conjunta_TC2_SC_Celular.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Guía conjunta TC II + SC</a><a class="btn" href="Guia_Conjunta_TC2_SC_PC.pdf" target="_blank" rel="noopener" style="text-decoration:none">A4</a></div>
   <div class="sec">Teoría de Circuitos II <small>· martes 24/11 · Caneda</small></div>
   <div class="grid">${GAMES.filter(g => g.sec === "tc").map(card).join("")}</div>
-  <div class="sec">Sistemas de Comunicaciones <small>· jueves 26/11 · Peralta</small></div>
+  <div class="sec">Sistemas de Comunicaciones <small>· Peralta · fecha a confirmar</small></div>
   <div class="grid">${GAMES.filter(g => g.sec === "sc").map(card).join("")}</div>
   <div class="row" style="justify-content:center;margin-top:18px"><a class="btn" href="../" style="text-decoration:none">← Osciloscopio Arcade (Medidas)</a></div>`;
   app.querySelectorAll(".card").forEach(b => b.onclick = () => START[b.dataset.g]());
