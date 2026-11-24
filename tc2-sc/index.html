@@ -216,6 +216,7 @@ function home() {
   const card = g => `<button class="card" data-g="${g.id}"><div class="t">${g.t}</div><div class="d">${g.d}</div><div class="b">${g.id in scores ? "Récord: " + scores[g.id] + " " + g.unit : "Sin jugar"}</div></button>`;
   app.innerHTML = `<p>Práctica y teoría para los dos parciales que vienen. Los ejercicios salen al azar y no se repiten hasta agotar cada banco.</p>
   <div class="row" style="justify-content:center"><a class="btn pri" href="Guia_TC2_Celular.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Guía TC II desde cero</a><a class="btn" href="Guia_TC2_PC.pdf" target="_blank" rel="noopener" style="text-decoration:none">A4</a></div>
+  <div class="row" style="justify-content:center"><a class="btn pri" href="Repaso_Final_TC2_Celular.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Repaso final: aproximación y digitales</a></div>
   <div class="row" style="justify-content:center"><a class="btn" href="Guia_Conjunta_TC2_SC_Celular.pdf" target="_blank" rel="noopener" style="text-decoration:none">📄 Guía conjunta TC II + SC</a><a class="btn" href="Guia_Conjunta_TC2_SC_PC.pdf" target="_blank" rel="noopener" style="text-decoration:none">A4</a></div>
   <div class="sec">Teoría de Circuitos II <small>· martes 24/11 · Caneda</small></div>
   <div class="grid">${GAMES.filter(g => g.sec === "tc").map(card).join("")}</div>
